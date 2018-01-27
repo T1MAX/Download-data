@@ -11,11 +11,14 @@ import org.xml.sax.SAXException;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 
 public class MongoDBClass {
@@ -23,10 +26,18 @@ public class MongoDBClass {
     private MongoDatabase database;
     private MongoCollection<Document> collection;
 
+    public static final String PATH_TO_PROPERTIES = "src/main/resources/config.properties";
+
     public MongoDBClass() {
-        client = new MongoClient("localhost", 27017);
-        database = client.getDatabase("zakupki");
-        collection = database.getCollection("contracts");
+        Properties properties = new Properties();
+        try (FileInputStream inputStream = new FileInputStream(PATH_TO_PROPERTIES)) {
+            properties.load(inputStream);
+            client = new MongoClient(properties.getProperty("host"), Integer.parseInt(properties.getProperty("port")));
+            database = client.getDatabase(properties.getProperty("database"));
+            collection = database.getCollection(properties.getProperty("collection"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public void insert(String pathToDir) throws ParserConfigurationException, TransformerException, SAXException, IOException, JSONException {
