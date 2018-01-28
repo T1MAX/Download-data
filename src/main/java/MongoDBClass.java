@@ -12,21 +12,24 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.TransformerException;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.logging.Logger;
 
 
 public class MongoDBClass {
+
+    private static Logger log = Logger.getLogger(MongoDBClass.class.getName());
+
     private MongoClient client;
     private MongoDatabase database;
     private MongoCollection<Document> collection;
 
-    public static final String PATH_TO_PROPERTIES = "src/main/resources/config.properties";
+    private static final String PATH_TO_PROPERTIES = "src/main/resources/config.properties";
 
     public MongoDBClass() {
         Properties properties = new Properties();
@@ -35,7 +38,9 @@ public class MongoDBClass {
             client = new MongoClient(properties.getProperty("host"), Integer.parseInt(properties.getProperty("port")));
             database = client.getDatabase(properties.getProperty("database"));
             collection = database.getCollection(properties.getProperty("collection"));
+            log.info(collection.getNamespace().getFullName() + " - opened connection");
         } catch (IOException e) {
+            log.info("Exception: " + e);
             e.printStackTrace();
         }
     }
@@ -46,11 +51,11 @@ public class MongoDBClass {
         for (Path zipFile : ZipReader.searchZipFiles(Paths.get(pathToDir))) {
             for (JSONObject contract : ZipReader.readZipAndSearchXml(zipFile))
                 collection.insertOne(Document.parse(contract.toString()));
-            // System.out.printf("%d zip-files read, time passed: %d, total inserts: %d.%n",
-            // ++j, System.nanoTime() - startTime, collection.count());
+            //log.info(++j + " zip-files was read");
+            collection = database.getCollection(collection.getNamespace().getCollectionName());
         }
         long estimatedTime = System.nanoTime() - startTime;
-        System.out.println(estimatedTime + " nanoseconds, " + collection.count() + " inserts");
+        log.info(estimatedTime + " nanoseconds, " + collection.count() + " inserts");
     }
 
     public void select() {

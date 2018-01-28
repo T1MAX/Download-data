@@ -5,9 +5,13 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.logging.Logger;
 
 
 public class ZipSearch extends SimpleFileVisitor<Path> {
+
+    //private static Logger log = Logger.getLogger(ZipSearch.class.getName());
+
     private ArrayList<Path> archived = new ArrayList<>();
 
     // ищем файлы, имя которых заканчивается на .zip, и добавляем их в список

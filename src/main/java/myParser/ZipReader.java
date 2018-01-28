@@ -11,8 +11,11 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 public class ZipReader {
+
+    //private static Logger log = Logger.getLogger(ZipReader.class.getName());
 
     public static List<JSONObject> readZipAndSearchXml(Path pathZipFile) throws IOException {
         FileSystem zipFileSystem = createZipFileSystem(pathZipFile);
