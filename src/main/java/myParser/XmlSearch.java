@@ -19,7 +19,7 @@ public class XmlSearch extends SimpleFileVisitor<Path> {
 
     //private static Logger log = Logger.getLogger(XmlSearch.class.getName());
 
-    private List<JSONObject> contracts = new ArrayList<>();
+    private List<JSONObject> protocols = new ArrayList<>();
 
     @Override
     public FileVisitResult visitFile (Path path, BasicFileAttributes attributes) throws IOException {
@@ -40,11 +40,18 @@ public class XmlSearch extends SimpleFileVisitor<Path> {
             JSONObject json;
             try {
                 json = XML.toJSONObject(content);
-                if (json.has("contract"))
-                    contracts.add(json.getJSONObject("contract")
+                if (json.has("purchaseProtocolZK")) {
+                    JSONObject protocolZKData = json.getJSONObject("purchaseProtocolZK")
                             .getJSONObject("body")
                             .getJSONObject("item")
-                            .getJSONObject("contractData"));
+                            .getJSONObject("purchaseProtocolZKData");
+                    if (protocolZKData.getJSONObject("lotApplicationsList").has("protocolLotApplications"))
+//                        if (protocolZKData.getJSONObject("lotApplicationsList")
+//                                .getJSONObject("protocolLotApplications")
+//                                .has("application"))
+                        protocols.add(protocolZKData);
+                }
+
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -52,7 +59,7 @@ public class XmlSearch extends SimpleFileVisitor<Path> {
         return FileVisitResult.CONTINUE;
     }
 
-    public List<JSONObject> getContracts() {
-        return contracts;
+    public List<JSONObject> getProtocols() {
+        return protocols;
     }
 }

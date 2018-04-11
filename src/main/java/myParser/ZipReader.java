@@ -22,7 +22,7 @@ public class ZipReader {
         Path root = zipFileSystem.getPath("/");
         XmlSearch xmlSearch = new XmlSearch();
         Files.walkFileTree(root, xmlSearch);
-        return xmlSearch.getContracts();
+        return xmlSearch.getProtocols();
     }
 
     private static FileSystem createZipFileSystem(Path path) throws IOException {
