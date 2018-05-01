@@ -2,14 +2,12 @@ import com.mongodb.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoIterable;
-import com.mongodb.client.model.Accumulators;
-import com.mongodb.client.model.Aggregates;
-import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.Sorts;
+import com.mongodb.client.model.*;
 import com.mongodb.operation.AggregateOperation;
 import myParser.ZipReader;
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.xml.sax.SAXException;
@@ -23,9 +21,11 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.logging.Logger;
 
+import static com.mongodb.client.model.Accumulators.push;
 import static com.mongodb.client.model.Accumulators.sum;
 import static com.mongodb.client.model.Aggregates.*;
 import static com.mongodb.client.model.Filters.*;
+import static com.mongodb.client.model.Projections.*;
 import static com.mongodb.client.model.Sorts.descending;
 import static com.mongodb.client.model.Sorts.orderBy;
 import static java.util.Arrays.asList;
@@ -118,7 +118,7 @@ public class MongoDBClass {
         return suppliersInn;
     }
 
-    public int getSupplierTenders (long supplierInn) {
+    public int getCertainSupplierTenders (long supplierInn) {
         MongoCollection<Document> localCollection = database.getCollection("moskvaSupplierTop");
         int supplierTenders = 0;
         ArrayList<Document> moskvaSupplierTop = localCollection.find().into(new ArrayList<>());
@@ -134,8 +134,88 @@ public class MongoDBClass {
     public HashMap<Long, Integer> getAllSuppliersTenders() {
         HashMap<Long, Integer> result = new HashMap<>();
         MongoCollection<Document> localCollection = database.getCollection("moskvaSupplierTop");
-        localCollection.find().into(new ArrayList<>()).forEach(document -> result.put(Long.parseLong(String.valueOf(document.get("_id"))), document.getDouble("count").intValue()));
+        localCollection.find().into(new ArrayList<>()).forEach(document -> result.put(Long.parseLong(String.valueOf(document.get("_id"))),
+                                                                                        document.getDouble("count").intValue()));
         return result;
+    }
+
+    public HashMap<Long, Integer> getAllSuppliersTendersForCertainCompany(long customerInn) {
+        HashMap<Long, Integer> result = new HashMap<>();
+        collection.aggregate(asList(
+                match(and(exists("customer"), eq("customer.mainInfo.inn", customerInn))),
+                unwind("$lotApplicationsList.protocolLotApplications.application"),
+                replaceRoot("$lotApplicationsList.protocolLotApplications.application"),
+                match(exists("supplierInfo")),
+                replaceRoot("$supplierInfo"),
+                group("$inn", sum("count", 1)),
+                match(ne("_id", null)),
+                sort(orderBy(descending("count"))))).into(new ArrayList<>())
+                .forEach(document -> result.put(Long.parseLong(String.valueOf(document.get("_id"))),
+                                                document.getInteger("count")));
+        return result;
+    }
+
+    public HashMap<Long, Integer> getAllWinnerSuppliersTendersForCertainCompany(long customerInn) {
+        HashMap<Long, Integer> result = new HashMap<>();
+        collection.aggregate(asList(
+                match(and(exists("customer"), eq("customer.mainInfo.inn", customerInn))),
+                unwind("$lotApplicationsList.protocolLotApplications.application"),
+                replaceRoot("$lotApplicationsList.protocolLotApplications.application"),
+                match(and(exists("supplierInfo"), eq("winnerIndication", "W"))),
+                replaceRoot("$supplierInfo"),
+                group("$inn", sum("count", 1)),
+                match(ne("_id", null)),
+                sort(orderBy(descending("count"))))).into(new ArrayList<>())
+                .forEach(document -> result.put(Long.parseLong(String.valueOf(document.get("_id"))),
+                        document.getInteger("count")));
+        return result;
+    }
+
+    public HashMap<String, double[]> getWinnerPrice() {
+        HashMap<String, double[]> result = new HashMap<>();
+        MongoCollection<Document> localCollection = database.getCollection("moskvaProtocolsShort");
+        localCollection.aggregate(asList(
+                unwind("$applications"),
+                match(eq("applications.winnerIndication", "W")),
+                project(fields(include("initialSum", "minPrice", "maxPrice"),
+                        computed("winnerPrice", "$applications.price")))))
+                .into(new ArrayList<>())
+                .forEach(document -> {
+                    try {
+                        double[] prices = new double[4];
+                        prices[0] = Double.parseDouble(String.valueOf(document.get("initialSum")));
+                        prices[1] = Double.parseDouble(String.valueOf(document.get("minPrice")));
+                        prices[2] = Double.parseDouble(String.valueOf(document.get("maxPrice")));
+                        prices[3] = Double.parseDouble(String.valueOf(document.get("winnerPrice")));
+                        result.put(document.getString("_id"), prices);
+                    } catch (NumberFormatException e) {
+                        e.printStackTrace();
+                    }
+                });
+        return result;
+    }
+
+    public HashMap<Long, Hashtable<Long, Integer>> getWinnersCompany() {
+        Hashtable<Long, Integer> winnersCount = new Hashtable<>();
+        HashMap<Long, Hashtable<Long, Integer>> result = new HashMap<>();
+        MongoCollection<Document> localCollection = database.getCollection("companyWinners");
+        localCollection.find().into(new ArrayList<>()).forEach(document -> {
+            List<Long> winners = (List<Long>) document.get("winners");
+            try {
+                winners.forEach(winner -> winnersCount.put(winner, winnersCount.getOrDefault(winner, 0) + 1));
+            } catch (ClassCastException e) {
+                e.printStackTrace();
+            }
+
+            result.put(Long.parseLong(String.valueOf(document.get("_id"))), winnersCount);
+        });
+        return result;
+    }
+
+    public ArrayList<String> getRegNumbers() {
+        ArrayList<String> regNumbers = new ArrayList<>();
+        collection.find().into(new ArrayList<>()).forEach(document -> regNumbers.add(String.valueOf(document.get("registrationNumber"))));
+        return regNumbers;
     }
 
     public HashMap<Long, Integer> getAllWinnerSuppliersTenders() {
@@ -143,6 +223,43 @@ public class MongoDBClass {
         MongoCollection<Document> localCollection = database.getCollection("moskvaSupplierWinnerTop");
         localCollection.find().into(new ArrayList<>()).forEach(document -> result.put(Long.parseLong(String.valueOf(document.get("_id"))), document.getDouble("count").intValue()));
         return result;
+    }
+
+    public Tender getTenderData(String regNumber) {
+        MongoCollection<Document> localCollection = database.getCollection("moskvaProtocolsShort");
+        Document tenderMongo = localCollection.find(eq("registrationNumber", regNumber)).first();
+        Tender tender = new Tender(regNumber);
+        try {
+            tender.setInitialSum(Double.parseDouble(String.valueOf(tenderMongo.get("initialSum"))));
+            tender.setCustomerInn(Long.parseLong(String.valueOf(tenderMongo.get("customerInn"))));
+            tender.setMaxPrice(Double.parseDouble(String.valueOf(tenderMongo.get("maxPrice"))));
+            tender.setMinPrice(Double.parseDouble(String.valueOf(tenderMongo.get("minPrice"))));
+        } catch (NullPointerException ignored) {
+
+        }
+        ArrayList<Supplier> suppliers = new ArrayList<>();
+        try {
+            ArrayList<Document> applications = (ArrayList<Document>) tenderMongo.get("applications");
+            applications.forEach(document -> {
+                Supplier supplier = new Supplier();
+                supplier.setPrice(Double.parseDouble(String.valueOf(document.get("price"))));
+                Document supplierInfo = (Document) document.get("supplierInfo");
+                supplier.setSupplierInn(Long.parseLong(String.valueOf(supplierInfo.get("inn"))));
+
+                    if (document.get("winnerIndication").equals("W")) {
+                        supplier.setWin(true);
+                        tender.setWinnerInn(supplier.getSupplierInn());
+                    }
+                    else supplier.setWin(false);
+
+                supplier.setOtherTendersNumber(getCertainSupplierTenders(supplier.getSupplierInn()));
+                suppliers.add(supplier);
+            });
+        } catch (NullPointerException | NumberFormatException ignored) {
+
+        }
+        tender.setSuppliers(suppliers);
+        return tender;
     }
 
 

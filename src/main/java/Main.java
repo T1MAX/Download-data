@@ -36,14 +36,38 @@ public class Main {
         //1047966022
         //171161031
 
-        long startTime = System.nanoTime();
-        System.out.println(mongo.getSupplierTenders(7716748907L));
-        System.out.println(System.nanoTime() - startTime);
-        //HashMap<Long, Double> probsOfSupplierWin = new HashMap<>();
-        //winnerSuppliersTenders.forEach((k, v) -> probsOfSupplierWin.put(k, v.doubleValue()));
-        //suppliersTenders.forEach((k, v) -> probsOfSupplierWin.merge(k, v.doubleValue(), (v1, v2) -> v1 / v2));
-        //WriteIntoExcel.hashMapToExcel(probsOfSupplierWin);
+//        //long startTime = System.nanoTime();
+//        HashMap<Long, Integer> suppliersTendersForCertainCompany = mongo.getAllSuppliersTendersForCertainCompany(7717149663L);
+//
+//        HashMap<Long, Integer> winnerTendersForCertainCompany = mongo.getAllWinnerSuppliersTendersForCertainCompany(7717149663L);
+//        //System.out.println(System.nanoTime() - startTime);
+//        HashMap<Long, Double> probsOfSupplierWin = new HashMap<>();
+//        winnerTendersForCertainCompany.forEach((k, v) -> probsOfSupplierWin.put(k, v.doubleValue()));
+//        suppliersTendersForCertainCompany.forEach((k, v) -> probsOfSupplierWin.merge(k, v.doubleValue(), (v1, v2) -> v1 / v2));
+//        WriteIntoExcel.hashMapToExcel(probsOfSupplierWin);
+
+        //WriteIntoExcel.hashMapHashtableToExcel(mongo.getWinnersCompany());
+        //WriteIntoExcel.hashMapArrayToExcel(mongo.getWinnerPrice());
 
         //System.out.println(mongo.getSupplierTenders(7706688536L, true));
+
+//        Tender tender = mongo.getTenderData("31200005055-01");
+//        TenderPredictionClass prediction = new TenderPredictionClass(tender);
+//        prediction.predictWinner();
+//        System.out.println(prediction.predictedWinner);
+//        System.out.println(prediction.isPredictionRight());
+        int rightPredictions = 0, wrongPredictions = 0;
+        for (String regNumber : mongo.getRegNumbers()) {
+            Tender tender = mongo.getTenderData(regNumber);
+            TenderPredictionClass prediction = new TenderPredictionClass(tender);
+            prediction.predictWinner();
+            if (prediction.isPredictionRight()) rightPredictions++;
+            else {
+                wrongPredictions++;
+                System.out.println("Wrong prediction on tender: " + regNumber + ", predicted winner: " + prediction.predictedWinner);
+            }
+        }
+        System.out.println("Right predictions: " + rightPredictions);
+        System.out.println("Wrong predictions: " + wrongPredictions);
     }
 }
