@@ -3,18 +3,17 @@ import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 
 public class WriteIntoExcel {
 
 
-    public static void hashMapToExcel(HashMap<Long, Double> data) {
+    public static void hashMapToExcel(HashMap<Long, Integer> data, String sheetTitle) {
         HSSFWorkbook workbook = new HSSFWorkbook();
-        HSSFSheet sheet = workbook.createSheet("Sample sheet");
+        HSSFSheet sheet = workbook.createSheet(sheetTitle);
         int rownum = 0;
         for (Long key : data.keySet()) {
             Row row = sheet.createRow(rownum++);
@@ -23,7 +22,8 @@ public class WriteIntoExcel {
             cell.setCellValue(data.get(key));
         }
         try {
-            FileOutputStream out = new FileOutputStream(new File("D:\\output4.xls"));
+            FileOutputStream out;
+            out = new FileOutputStream(new File("D:\\suppliersWins.xls"));
             workbook.write(out);
             out.close();
             System.out.println("Excel written successfully..");
@@ -46,7 +46,7 @@ public class WriteIntoExcel {
             }
         }
         try {
-            FileOutputStream out = new FileOutputStream(new File("D:\\output5.xls"));
+            FileOutputStream out = new FileOutputStream(new File("D:\\pricesMoreOneSupplier.xls"));
             workbook.write(out);
             out.close();
             System.out.println("Excel written successfully..");

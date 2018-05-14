@@ -6,6 +6,10 @@ public class Supplier {
     private double price;
     private boolean isWin;
     private int otherTendersNumber;
+    private boolean isAccepted;
+
+    public Supplier() {
+    }
 
     public long getSupplierInn() {
         return supplierInn;
@@ -46,5 +50,13 @@ public class Supplier {
                 ", price=" + price +
                 ", isWin=" + isWin +
                 '}';
+    }
+
+    public boolean isAccepted() {
+        return isAccepted;
+    }
+
+    public void setAccepted(boolean accepted) {
+        isAccepted = accepted;
     }
 }

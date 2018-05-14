@@ -40,16 +40,16 @@ public class XmlSearch extends SimpleFileVisitor<Path> {
             JSONObject json;
             try {
                 json = XML.toJSONObject(content);
-                if (json.has("purchaseProtocolZK")) {
-                    JSONObject protocolZKData = json.getJSONObject("purchaseProtocolZK")
+                if (json.has("purchaseProtocol")) {
+                    JSONObject protocolZKData = json.getJSONObject("purchaseProtocol")
                             .getJSONObject("body")
                             .getJSONObject("item")
-                            .getJSONObject("purchaseProtocolZKData");
-                    if (protocolZKData.getJSONObject("lotApplicationsList").has("protocolLotApplications"))
+                            .getJSONObject("purchaseProtocolData");
+                    //if (protocolZKData.getJSONObject("lotApplicationsList").has("protocolLotApplications"))
 //                        if (protocolZKData.getJSONObject("lotApplicationsList")
 //                                .getJSONObject("protocolLotApplications")
 //                                .has("application"))
-                        protocols.add(protocolZKData);
+                    protocols.add(protocolZKData);
                 }
 
             } catch (Exception e) {

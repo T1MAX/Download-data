@@ -1,19 +1,63 @@
-import java.util.List;
-
-/**
- * Created by 803019 on 18.04.2018.
- */
 public class Tender {
     private String regNumber;
-    private long customerInn;
-    private List<Supplier> suppliers;
+    private int customerLastTendersNum;
     private double initialSum;
-    private long winnerInn;
+    private int winnerLastTendersNum;
+    private double winnerLastWinRate;
+    private int winnerRelToCustomer;
+    private double winnerPrice;
+    private int numOfParticipants;
     private String subject;
-    private double maxPrice;
-    private double minPrice;
 
     public Tender() {
+    }
+
+    public double getWinnerPrice() {
+        return winnerPrice;
+    }
+
+    public void setWinnerPrice(double winnerPrice) {
+        this.winnerPrice = winnerPrice;
+    }
+
+    public int getNumOfParticipants() {
+        return numOfParticipants;
+    }
+
+    public void setNumOfParticipants(int numOfParticipants) {
+        this.numOfParticipants = numOfParticipants;
+    }
+
+    public int getCustomerLastTendersNum() {
+        return customerLastTendersNum;
+    }
+
+    public void setCustomerLastTendersNum(int customerLastTendersNum) {
+        this.customerLastTendersNum = customerLastTendersNum;
+    }
+
+    public int getWinnerLastTendersNum() {
+        return winnerLastTendersNum;
+    }
+
+    public void setWinnerLastTendersNum(int winnerLastTendersNum) {
+        this.winnerLastTendersNum = winnerLastTendersNum;
+    }
+
+    public double getWinnerLastWinRate() {
+        return winnerLastWinRate;
+    }
+
+    public void setWinnerLastWinRate(double winnerLastWinRate) {
+        this.winnerLastWinRate = winnerLastWinRate;
+    }
+
+    public int getWinnerRelToCustomer() {
+        return winnerRelToCustomer;
+    }
+
+    public void setWinnerRelToCustomer(int winnerRelToCustomer) {
+        this.winnerRelToCustomer = winnerRelToCustomer;
     }
 
     public Tender(String regNumber) {
@@ -28,52 +72,12 @@ public class Tender {
         this.regNumber = regNumber;
     }
 
-    public double getMaxPrice() {
-        return maxPrice;
-    }
-
-    public void setMaxPrice(double maxPrice) {
-        this.maxPrice = maxPrice;
-    }
-
-    public double getMinPrice() {
-        return minPrice;
-    }
-
-    public void setMinPrice(double minPrice) {
-        this.minPrice = minPrice;
-    }
-
-    public long getCustomerInn() {
-        return customerInn;
-    }
-
-    public void setCustomerInn(long customerInn) {
-        this.customerInn = customerInn;
-    }
-
-    public List<Supplier> getSuppliers() {
-        return suppliers;
-    }
-
-    public void setSuppliers(List<Supplier> suppliers) {
-        this.suppliers = suppliers;
-    }
-
     public double getInitialSum() {
         return initialSum;
     }
 
     public void setInitialSum(double initialSum) {
         this.initialSum = initialSum;
-    }
-
-    public long getWinnerInn() {
-        return winnerInn;
-    }
-
-    public void setWinnerInn(long winnerInn) {
-        this.winnerInn = winnerInn;
     }
 
     public String getSubject() {
@@ -88,13 +92,13 @@ public class Tender {
     public String toString() {
         return "Tender{" +
                 "regNumber='" + regNumber + '\'' +
-                ", customerInn=" + customerInn +
-                ", suppliers=" + suppliers +
+                ", customerLastTendersNum=" + customerLastTendersNum +
                 ", initialSum=" + initialSum +
-                ", winnerInn=" + winnerInn +
+                ", winnerLastTendersNum=" + winnerLastTendersNum +
+                ", winnerLastWinRate=" + winnerLastWinRate +
+                ", winnerRelToCustomer=" + winnerRelToCustomer +
+                ", numOfParticipants=" + numOfParticipants +
                 ", subject='" + subject + '\'' +
-                ", maxPrice=" + maxPrice +
-                ", minPrice=" + minPrice +
                 '}';
     }
 }

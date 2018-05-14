@@ -30,7 +30,6 @@ import static com.mongodb.client.model.Sorts.descending;
 import static com.mongodb.client.model.Sorts.orderBy;
 import static java.util.Arrays.asList;
 
-
 public class MongoDBClass {
 
     private static Logger log = Logger.getLogger(MongoDBClass.class.getName());
@@ -68,148 +67,53 @@ public class MongoDBClass {
         log.info(estimatedTime + " nanoseconds, " + collection.count() + " inserts");
     }
 
-    public void select() throws JSONException {
-        collection = database.getCollection("supplierTop");
-        List<Document> supplierTop = collection.find().into(new ArrayList<>());
-        collection = database.getCollection("participantTop");
-        List<Document> participantTop = collection.find().into(new ArrayList<>());
-
-        for (Document supplier : supplierTop) {
-            long inn = Long.parseLong(String.valueOf(supplier.get("_id")));
-            double count = supplier.getDouble("count");
-            boolean exists = false;
-            for (Document participant : participantTop) {
-                if (participant.get("_id").equals(inn)) {
-                    double curCount = (Double) participant.remove("count");
-                    participant.append("count", curCount + count);
-                    exists = true;
-                    break;
-                }
-            }
-            if (!exists) {
-                participantTop.add(supplier);
-            }
-        }
-
-        int sumCount = 0;
-        for (Document participant: participantTop) {
-            sumCount += participant.getDouble("count");
-            Helpers.printJson(participant);
-        }
-        System.out.println(participantTop.size());
-        System.out.println(sumCount);
-    }
-
     public ArrayList<Long> getCustomers() {
         ArrayList<Document> customers = collection.aggregate(asList(match(exists("customer")),
                 replaceRoot("$customer.mainInfo"),
-                group("$inn", sum("count", 1)),
-                sort(orderBy(descending("count"))))).into(new ArrayList<>());
+                group("$inn", sum("count", 1)))).into(new ArrayList<>());
         ArrayList<Long> innCustomers = new ArrayList<>();
-        for (Document customer : customers)
-            innCustomers.add(Long.parseLong(String.valueOf(customer.get("_id"))));
+        customers.forEach(customer -> innCustomers.add(Long.parseLong(String.valueOf(customer.get("_id")))));
         return innCustomers;
     }
 
     public ArrayList<Long> getSuppliers () {
-        MongoCollection<Document> localCollection = database.getCollection("moskvaSupplierTop");
+        MongoCollection<Document> localCollection = database.getCollection("SuppliersTenders");
         ArrayList<Long> suppliersInn = new ArrayList<>();
         localCollection.find().into(new ArrayList<>()).forEach(document -> suppliersInn.add(Long.parseLong(String.valueOf(document.get("_id")))));
         return suppliersInn;
     }
 
-    public int getCertainSupplierTenders (long supplierInn) {
-        MongoCollection<Document> localCollection = database.getCollection("moskvaSupplierTop");
-        int supplierTenders = 0;
-        ArrayList<Document> moskvaSupplierTop = localCollection.find().into(new ArrayList<>());
-        for (Document document : moskvaSupplierTop) {
-            if (Long.parseLong(String.valueOf(document.get("_id"))) == supplierInn) {
-                supplierTenders = document.getDouble("count").intValue();
-                break;
-            }
-        }
-        return supplierTenders;
+    public int getSupplierLastTenders (long supplierInn) {
+        MongoCollection<Document> localCollection = database.getCollection("SuppliersTenders");
+        ArrayList<Document> supplierTenders = localCollection.find().into(new ArrayList<>());
+        for (Document document : supplierTenders)
+            if (document.getLong("_id") == supplierInn)
+                return document.getDouble("count").intValue();
+        return 0;
     }
 
-    public HashMap<Long, Integer> getAllSuppliersTenders() {
-        HashMap<Long, Integer> result = new HashMap<>();
-        MongoCollection<Document> localCollection = database.getCollection("moskvaSupplierTop");
-        localCollection.find().into(new ArrayList<>()).forEach(document -> result.put(Long.parseLong(String.valueOf(document.get("_id"))),
-                                                                                        document.getDouble("count").intValue()));
-        return result;
+    public int getSupplierLastWins (long supplierInn) {
+        MongoCollection<Document> localCollection = database.getCollection("SuppliersWins");
+        ArrayList<Document> supplierTenders = localCollection.find().into(new ArrayList<>());
+        for (Document document : supplierTenders)
+            if (document.getLong("_id") == supplierInn)
+                return document.getDouble("count").intValue();
+        return 0;
     }
 
-    public HashMap<Long, Integer> getAllSuppliersTendersForCertainCompany(long customerInn) {
-        HashMap<Long, Integer> result = new HashMap<>();
-        collection.aggregate(asList(
-                match(and(exists("customer"), eq("customer.mainInfo.inn", customerInn))),
-                unwind("$lotApplicationsList.protocolLotApplications.application"),
-                replaceRoot("$lotApplicationsList.protocolLotApplications.application"),
-                match(exists("supplierInfo")),
-                replaceRoot("$supplierInfo"),
-                group("$inn", sum("count", 1)),
-                match(ne("_id", null)),
-                sort(orderBy(descending("count"))))).into(new ArrayList<>())
-                .forEach(document -> result.put(Long.parseLong(String.valueOf(document.get("_id"))),
-                                                document.getInteger("count")));
-        return result;
-    }
-
-    public HashMap<Long, Integer> getAllWinnerSuppliersTendersForCertainCompany(long customerInn) {
-        HashMap<Long, Integer> result = new HashMap<>();
-        collection.aggregate(asList(
+    public int getRelOfCustomerSupplier(long customerInn, long supplierInn) {
+        return collection.aggregate(asList(
                 match(and(exists("customer"), eq("customer.mainInfo.inn", customerInn))),
                 unwind("$lotApplicationsList.protocolLotApplications.application"),
                 replaceRoot("$lotApplicationsList.protocolLotApplications.application"),
                 match(and(exists("supplierInfo"), eq("winnerIndication", "W"))),
                 replaceRoot("$supplierInfo"),
-                group("$inn", sum("count", 1)),
-                match(ne("_id", null)),
-                sort(orderBy(descending("count"))))).into(new ArrayList<>())
-                .forEach(document -> result.put(Long.parseLong(String.valueOf(document.get("_id"))),
-                        document.getInteger("count")));
-        return result;
+                match(eq("inn", supplierInn)),
+                count("count"))).first().getDouble("count").intValue();
     }
 
-    public HashMap<String, double[]> getWinnerPrice() {
-        HashMap<String, double[]> result = new HashMap<>();
-        MongoCollection<Document> localCollection = database.getCollection("moskvaProtocolsShort");
-        localCollection.aggregate(asList(
-                unwind("$applications"),
-                match(eq("applications.winnerIndication", "W")),
-                project(fields(include("initialSum", "minPrice", "maxPrice"),
-                        computed("winnerPrice", "$applications.price")))))
-                .into(new ArrayList<>())
-                .forEach(document -> {
-                    try {
-                        double[] prices = new double[4];
-                        prices[0] = Double.parseDouble(String.valueOf(document.get("initialSum")));
-                        prices[1] = Double.parseDouble(String.valueOf(document.get("minPrice")));
-                        prices[2] = Double.parseDouble(String.valueOf(document.get("maxPrice")));
-                        prices[3] = Double.parseDouble(String.valueOf(document.get("winnerPrice")));
-                        result.put(document.getString("_id"), prices);
-                    } catch (NumberFormatException e) {
-                        e.printStackTrace();
-                    }
-                });
-        return result;
-    }
-
-    public HashMap<Long, Hashtable<Long, Integer>> getWinnersCompany() {
-        Hashtable<Long, Integer> winnersCount = new Hashtable<>();
-        HashMap<Long, Hashtable<Long, Integer>> result = new HashMap<>();
-        MongoCollection<Document> localCollection = database.getCollection("companyWinners");
-        localCollection.find().into(new ArrayList<>()).forEach(document -> {
-            List<Long> winners = (List<Long>) document.get("winners");
-            try {
-                winners.forEach(winner -> winnersCount.put(winner, winnersCount.getOrDefault(winner, 0) + 1));
-            } catch (ClassCastException e) {
-                e.printStackTrace();
-            }
-
-            result.put(Long.parseLong(String.valueOf(document.get("_id"))), winnersCount);
-        });
-        return result;
+    public int getNumOfLastCustomerTenders(long customerInn) {
+        return collection.find(eq("customer.mainInfo.inn", customerInn)).into(new ArrayList<>()).size();
     }
 
     public ArrayList<String> getRegNumbers() {
@@ -218,48 +122,54 @@ public class MongoDBClass {
         return regNumbers;
     }
 
-    public HashMap<Long, Integer> getAllWinnerSuppliersTenders() {
-        HashMap<Long, Integer> result = new HashMap<>();
-        MongoCollection<Document> localCollection = database.getCollection("moskvaSupplierWinnerTop");
-        localCollection.find().into(new ArrayList<>()).forEach(document -> result.put(Long.parseLong(String.valueOf(document.get("_id"))), document.getDouble("count").intValue()));
-        return result;
+    public TenderInfo getTenderInfo(String regNumber) {
+        MongoCollection<Document> localCollection = database.getCollection("trainData");
+        Document tenderMongo = localCollection.find(eq("registrationNumber", regNumber)).first();
+        TenderInfo tenderInfo = new TenderInfo(regNumber);
+        try {
+            tenderInfo.setInitialSum(Double.parseDouble(String.valueOf(tenderMongo.get("initialSum"))));
+            tenderInfo.setCustomerInn(Long.parseLong(String.valueOf(tenderMongo.get("customerInn"))));
+            tenderInfo.setNumOfParticipants((int)Double.parseDouble(String.valueOf(tenderMongo.get("numParticipants"))));
+            tenderInfo.setNumOfLastCustomerTenders(getNumOfLastCustomerTenders(tenderInfo.getCustomerInn()));
+        } catch (NullPointerException ignored) {
+        }
+        return tenderInfo;
     }
 
-    public Tender getTenderData(String regNumber) {
-        MongoCollection<Document> localCollection = database.getCollection("moskvaProtocolsShort");
+    public Tender getTenderData(String regNumber, boolean train) {
+        MongoCollection<Document> localCollection;
+        if (train) localCollection = database.getCollection("trainData");
+        else localCollection = database.getCollection("testData");
         Document tenderMongo = localCollection.find(eq("registrationNumber", regNumber)).first();
         Tender tender = new Tender(regNumber);
+        long customerInn = (long)tenderMongo.get("customerInn");
         try {
-            tender.setInitialSum(Double.parseDouble(String.valueOf(tenderMongo.get("initialSum"))));
-            tender.setCustomerInn(Long.parseLong(String.valueOf(tenderMongo.get("customerInn"))));
-            tender.setMaxPrice(Double.parseDouble(String.valueOf(tenderMongo.get("maxPrice"))));
-            tender.setMinPrice(Double.parseDouble(String.valueOf(tenderMongo.get("minPrice"))));
-        } catch (NullPointerException ignored) {
-
+            tender.setInitialSum((double)tenderMongo.get("initialSum"));
+            tender.setNumOfParticipants((tenderMongo.getDouble("numApps")).intValue());
+            tender.setCustomerLastTendersNum(getNumOfLastCustomerTenders(customerInn));
+        } catch (NullPointerException e) {
+            e.printStackTrace();
         }
-        ArrayList<Supplier> suppliers = new ArrayList<>();
         try {
             ArrayList<Document> applications = (ArrayList<Document>) tenderMongo.get("applications");
             applications.forEach(document -> {
-                Supplier supplier = new Supplier();
-                supplier.setPrice(Double.parseDouble(String.valueOf(document.get("price"))));
-                Document supplierInfo = (Document) document.get("supplierInfo");
-                supplier.setSupplierInn(Long.parseLong(String.valueOf(supplierInfo.get("inn"))));
-
-                    if (document.get("winnerIndication").equals("W")) {
-                        supplier.setWin(true);
-                        tender.setWinnerInn(supplier.getSupplierInn());
-                    }
-                    else supplier.setWin(false);
-
-                supplier.setOtherTendersNumber(getCertainSupplierTenders(supplier.getSupplierInn()));
-                suppliers.add(supplier);
+                if (document.get("winnerIndication").equals("W")) {
+                    long winnerInn = (long)document.get("supplierInfo.inn");
+                    tender.setWinnerLastTendersNum(getSupplierLastTenders(winnerInn));
+                    tender.setWinnerLastWinRate(getSupplierLastWins(winnerInn) * 1. / tender.getWinnerLastTendersNum());
+                    tender.setWinnerRelToCustomer(getRelOfCustomerSupplier(customerInn, winnerInn));
+                    tender.setWinnerPrice((double)document.get("price"));
+                }
             });
-        } catch (NullPointerException | NumberFormatException ignored) {
-
+        } catch (NullPointerException | NumberFormatException e) {
+            e.printStackTrace();
         }
-        tender.setSuppliers(suppliers);
         return tender;
+    }
+
+    public long get() {
+        MongoCollection<Document> local = database.getCollection("moskvaProtocolsShort");
+        return 1l;
     }
 
 
